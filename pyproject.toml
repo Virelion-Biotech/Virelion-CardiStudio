@@ -1,0 +1,27 @@
+[project]
+name = "virelion-cardistudio"
+version = "0.1.0"
+description = "Reproducible cardiac challenge-population studio"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.26"]
+
+[project.optional-dependencies]
+analysis = ["pandas>=2.0", "plotly>=5.18"]
+app = ["streamlit>=1.35"]
+dev = ["pytest>=8", "ruff>=0.5", "pandas>=2.0", "plotly>=5.18"]
+
+[project.scripts]
+cardistudio = "cardistudio.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

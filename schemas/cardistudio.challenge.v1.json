@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://virelion-biotech.github.io/schemas/cardistudio.challenge.v1.json",
+  "title": "CardiStudio Challenge",
+  "type": "object",
+  "required": ["name", "version", "domain", "population", "features"],
+  "properties": {
+    "name": {"type":"string","minLength":1},
+    "version": {"type":"string"},
+    "domain": {"type":"string"},
+    "description": {"type":"string"},
+    "population": {"type":"object","required":["n","groups","group_field","seed"]},
+    "features": {"type":"array","items":{"type":"object","required":["name","dtype","distribution"]}},
+    "metadata": {"type":"object"},
+    "interventions": {"type":"array"},
+    "constraints": {"type":"array"}
+  }
+}
