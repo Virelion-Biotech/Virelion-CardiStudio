@@ -1,20 +1,18 @@
 # Virelion CardiStudio
 
-**Cardiac experimental-population design, simulation, constraint checking, power planning and reproducibility engine.**
-
-CardiStudio is the design layer of the Virelion cardiac-computation stack. It turns an experimental hypothesis into a structured, reproducible population/design specification that can be consumed by downstream simulation, evaluation and learning systems.
+CardiStudio is a Python toolkit for cardiac experimental design, synthetic population generation, constraint checking, power planning, and reproducible computational study specifications.
 
 ## Core capabilities
 
 - Reproducible synthetic cardiac populations with deterministic seeds and provenance fingerprints
-- Continuous, integer, binary and categorical feature distributions
-- Full-factorial experimental designs with replicates, blocks and randomization
+- Continuous, integer, binary, and categorical feature distributions
+- Full-factorial experimental designs with replicates, blocks, and randomization
 - Correlated multivariate sampling through validated Gaussian-copula latent variables
-- Longitudinal recovery/transition trajectories
+- Longitudinal recovery and transition trajectories
 - Hard and soft row-level biological constraints
 - Cohort validation and balance reports
 - Effect-size and approximate two-arm power/sample-size planning
-- JSON/JSONL interoperability and versioned challenge schemas
+- JSON/JSONL serialization and versioned challenge specifications
 - Streamlit interactive studio and CLI
 
 ## Example
@@ -42,18 +40,26 @@ n_per_arm = approximate_two_sample_n(effect_size=0.5, alpha=0.05, power=0.8)
 
 ## Architecture
 
-`ChallengeSpec → Design Engine → Population Generator → Constraint Engine → Analysis/Provenance → CardiBridge/CardiEval/CardiLearn`
+`Design specification → Design engine → Population generator → Constraint engine → Analysis/provenance`
 
-The package is deliberately deterministic where possible: seeds, canonical challenge serialization, population fingerprints and explicit design metadata make synthetic experiments auditable and reproducible.
+The package is deterministic where possible: seeds, canonical serialization, population fingerprints, and explicit design metadata make computational experiments auditable and reproducible.
 
 ## Scientific scope
 
-CardiStudio generates **computational experimental designs and synthetic populations**. Generated values are simulations, not biological measurements and must not be represented as real patient/animal/cell data.
+CardiStudio generates **computational experimental designs and synthetic populations**. Generated values are simulations, not biological measurements and must not be represented as real patient, animal, or cell data.
 
 ## Development
 
 ```bash
-pip install -e .
+pip install -e '.[dev]'
 pytest -q
 streamlit run app/streamlit_app.py
 ```
+
+## License
+
+GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later). See `LICENSE`.
+
+## Citation
+
+Cite the repository release and the datasets, assumptions, or experimental methods used to define or validate a computational study.
