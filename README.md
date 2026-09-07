@@ -2,20 +2,26 @@
 
 CardiStudio is a Python toolkit for cardiac experimental design, synthetic population generation, constraint checking, power planning, and reproducible computational study specifications.
 
-## Core capabilities
+## What it contains
 
-- Reproducible synthetic cardiac populations with deterministic seeds and provenance fingerprints
-- Continuous, integer, binary, and categorical feature distributions
-- Full-factorial experimental designs with replicates, blocks, and randomization
-- Correlated multivariate sampling through validated Gaussian-copula latent variables
-- Longitudinal recovery and transition trajectories
-- Hard and soft row-level biological constraints
-- Cohort validation and balance reports
-- Effect-size and approximate two-arm power/sample-size planning
-- JSON/JSONL serialization and versioned challenge specifications
-- Streamlit interactive studio and CLI
+- Reproducible synthetic cardiac populations with deterministic seeds and provenance fingerprints.
+- Continuous, integer, binary, and categorical feature distributions.
+- Full-factorial experimental designs with replicates, blocks, and randomization.
+- Correlated multivariate sampling through validated Gaussian-copula latent variables.
+- Longitudinal recovery and transition trajectories.
+- Hard and soft row-level biological constraints.
+- Cohort validation and balance reports.
+- Effect-size and approximate two-arm power/sample-size planning.
+- JSON/JSONL serialization and versioned challenge specifications.
+- Streamlit interface and CLI.
 
-## Example
+## Installation
+
+```bash
+pip install -e '.[dev]'
+```
+
+## Usage
 
 ```python
 from cardistudio import full_factorial, correlated_normals, approximate_two_sample_n
@@ -38,28 +44,29 @@ physiology = correlated_normals(
 n_per_arm = approximate_two_sample_n(effect_size=0.5, alpha=0.05, power=0.8)
 ```
 
-## Architecture
-
-`Design specification → Design engine → Population generator → Constraint engine → Analysis/provenance`
-
-The package is deterministic where possible: seeds, canonical serialization, population fingerprints, and explicit design metadata make computational experiments auditable and reproducible.
-
-## Scientific scope
-
-CardiStudio generates **computational experimental designs and synthetic populations**. Generated values are simulations, not biological measurements and must not be represented as real patient, animal, or cell data.
-
-## Development
+Development commands:
 
 ```bash
-pip install -e '.[dev]'
 pytest -q
 streamlit run app/streamlit_app.py
 ```
 
+## Inputs and outputs
+
+**Inputs:** factor definitions, replicate/block/randomization settings, feature distributions, correlation matrices, trajectory parameters, biological constraints, effect-size assumptions, alpha/power targets, and random seeds.
+
+**Outputs:** experimental design tables, synthetic population tables, trajectory specifications, constraint/balance reports, power/sample-size estimates, JSON/JSONL study specifications, and provenance fingerprints.
+
+Generated values are simulations, not patient, animal, or cell measurements.
+
+## Validation
+
+Validation includes design and population constraint checks, balance reports, deterministic-seed reproducibility, correlation-matrix validation, and software tests. Power calculations are approximate planning tools and should be checked against the intended statistical model.
+
+## Limitations
+
+Synthetic populations depend on the specified distributions, correlations, constraints, and assumptions. Constraint satisfaction does not establish biological realism. Approximate power calculations may differ from the final analysis model. Generated data must not be presented as empirical observations.
+
 ## License
 
 GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later). See `LICENSE`.
-
-## Citation
-
-Cite the repository release and the datasets, assumptions, or experimental methods used to define or validate a computational study.
