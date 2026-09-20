@@ -2,6 +2,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from itertools import product
 from typing import Any
+import hashlib
+import json
 import math
 
 @dataclass(frozen=True)
@@ -29,7 +31,13 @@ class ExperimentalDesign:
             for rep in range(1, self.replicates + 1):
                 for cell in cells:
                     row = dict(cell, block=block, replicate=rep)
-                    row["design_id"] = f"D-{len(rows)+1:06d}"
+                    canonical = json.dumps(
+                        {"factors": cell, "replicate": rep, "seed": self.seed},
+                        sort_keys=True,
+                        default=str,
+                    )
+                    row["cell_id"] = hashlib.sha256(canonical.encode()).hexdigest()[:16]
+                    row["design_id"] = row["cell_id"]
                     rows.append(row)
         if self.randomize:
             import random

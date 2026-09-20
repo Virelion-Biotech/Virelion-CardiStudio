@@ -1,9 +1,9 @@
 from __future__ import annotations
+
 import numpy as np
 
 
-def gaussian_copula(n: int, correlation: list[list[float]], seed: int = 42) -> np.ndarray:
-    """Sample correlated standard-normal latent variables with validation."""
+def validate_correlation(correlation: list[list[float]]) -> np.ndarray:
     c = np.asarray(correlation, dtype=float)
     if c.ndim != 2 or c.shape[0] != c.shape[1]:
         raise ValueError("correlation must be square")
@@ -13,11 +13,25 @@ def gaussian_copula(n: int, correlation: list[list[float]], seed: int = 42) -> n
         raise ValueError("correlation diagonal must equal 1")
     if np.min(np.linalg.eigvalsh(c)) < -1e-8:
         raise ValueError("correlation matrix must be positive semidefinite")
+    return c
+
+
+def gaussian_copula(n: int, correlation: list[list[float]], seed: int = 42) -> np.ndarray:
+    """Sample correlated standard-normal latent variables with validation."""
+    if n < 1:
+        raise ValueError("n must be >= 1")
+    c = validate_correlation(correlation)
     rng = np.random.default_rng(seed)
     return rng.multivariate_normal(np.zeros(c.shape[0]), c, size=n, check_valid="raise")
 
 
-def correlated_normals(n: int, means: list[float], sds: list[float], correlation: list[list[float]], seed: int = 42) -> np.ndarray:
+def correlated_normals(
+    n: int,
+    means: list[float],
+    sds: list[float],
+    correlation: list[list[float]],
+    seed: int = 42,
+) -> np.ndarray:
     if len(means) != len(sds) or len(means) != len(correlation):
         raise ValueError("means, sds and correlation dimensions must agree")
     if any(x <= 0 for x in sds):
