@@ -5,7 +5,7 @@ from .models import ChallengeSpec, FeatureSpec, PopulationSpec, CURRENT_CHALLENG
 from .population import PopulationBuilder, Population, GENERATOR_VERSION
 from .validation import ValidationReport, validate_challenge, validate_population
 from .analysis import summarize_population, balance_report
-from .io import export_cardi_bridge, load_challenge, save_challenge, save_population, load_population
+from .io import (\n    export_cardi_bridge,\n    load_challenge,\n    load_population,\n    save_challenge,\n    save_population,\n)
 from .design import Factor, ExperimentalDesign, full_factorial
 from .correlations import gaussian_copula, correlated_normals, validate_correlation
 from .trajectory import (
