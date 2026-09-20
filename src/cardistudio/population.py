@@ -310,22 +310,39 @@ class PopulationBuilder:
         for other in group_names[1:]:
             comparison: dict[str, Any] = {}
             for feature in self.spec.features:
-                a = np.asarray(
-                    [row[feature.name] for row in rows if row[self.spec.population.group_field] == ref],
-                    dtype=float,
-                )
-                b = np.asarray(
-                    [row[feature.name] for row in rows if row[self.spec.population.group_field] == other],
-                    dtype=float,
-                )
-                entry: dict[str, Any] = {
-                    "sample_mean_ref": float(np.mean(a)),
-                    "sample_mean_other": float(np.mean(b)),
-                }
-                pooled = math.sqrt((float(np.var(a, ddof=1)) + float(np.var(b, ddof=1))) / 2)
-                entry["sample_cohens_d"] = (
-                    (float(np.mean(b)) - float(np.mean(a))) / pooled if pooled else None
-                )
+                ref_values = [
+                    row[feature.name]
+                    for row in rows
+                    if row[self.spec.population.group_field] == ref
+                ]
+                other_values = [
+                    row[feature.name]
+                    for row in rows
+                    if row[self.spec.population.group_field] == other
+                ]
+                if feature.distribution in self._LATENT_DISTRIBUTIONS:
+                    a = np.asarray(ref_values, dtype=float)
+                    b = np.asarray(other_values, dtype=float)
+                    entry: dict[str, Any] = {
+                        "sample_mean_ref": float(np.mean(a)),
+                        "sample_mean_other": float(np.mean(b)),
+                    }
+                    pooled = math.sqrt(
+                        (float(np.var(a, ddof=1)) + float(np.var(b, ddof=1))) / 2
+                    )
+                    entry["sample_cohens_d"] = (
+                        (float(np.mean(b)) - float(np.mean(a))) / pooled if pooled else None
+                    )
+                else:
+                    entry = {
+                        "sample_counts_ref": dict(
+                            zip(*np.unique(np.asarray(ref_values, dtype=str), return_counts=True))
+                        ),
+                        "sample_counts_other": dict(
+                            zip(*np.unique(np.asarray(other_values, dtype=str), return_counts=True))
+                        ),
+                    }
+                    entry["sample_cohens_d"] = None
                 if feature.distribution == "normal":
                     ref_shift, ref_scale = self._effect(feature, ref)
                     other_shift, other_scale = self._effect(feature, other)
