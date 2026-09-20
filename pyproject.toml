@@ -38,6 +38,9 @@ addopts = "-q --strict-markers --cov=cardistudio --cov-report=term-missing --cov
 line-length = 100
 target-version = "py310"
 
+[tool.ruff.lint]
+select = ["E", "F"]
+
 [tool.mypy]
 python_version = "3.10"
 check_untyped_defs = true
