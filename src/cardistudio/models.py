@@ -74,7 +74,7 @@ def migrate_challenge_dict(data: dict[str, Any]) -> dict[str, Any]:
     major = version.split(".", 1)[0]
     current_major = CURRENT_CHALLENGE_VERSION.split(".", 1)[0]
     if major != current_major:
-        raise ValueError(f"Unsupported challenge major version {version}; expected {current_major}.x")
+        raise ValueError(\n            f"Unsupported challenge major version {version}; expected {current_major}.x"\n        )
 
     migrated = json.loads(json.dumps(data))
     for feature in migrated.get("features", []):
