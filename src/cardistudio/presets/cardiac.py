@@ -75,6 +75,14 @@ def cardiac_mi_vs_sham(n: int = 1000, seed: int = 42) -> ChallengeSpec:
                 effects={"mi": {"shift": 1.25, "scale": 1.20}},
             ),
         ],
+        constraints=[
+            {
+                "name": "ef_fibrosis_coherence",
+                "type": "relation",
+                "expr": "ejection_fraction < 0.4 implies fibrosis_fraction > 0.15",
+                "severity": "error",
+            }
+        ],
         metadata={
             "species": "mouse",
             "injury": "myocardial_infarction",
