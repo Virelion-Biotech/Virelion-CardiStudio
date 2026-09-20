@@ -10,7 +10,7 @@ from jsonschema import Draft202012Validator
 from .models import ChallengeSpec, migrate_challenge_dict
 from .population import Population
 
-_SOURCE_SCHEMA_PATH = Path(__file__).resolve().parents[2] / "schemas" / "cardistudio.challenge.v1.json"
+_SOURCE_SCHEMA_PATH = (\n    Path(__file__).resolve().parents[2]\n    / "schemas"\n    / "cardistudio.challenge.v1.json"\n)
 _PACKAGE_SCHEMA_PATH = Path(__file__).with_name("challenge_schema.json")
 
 
