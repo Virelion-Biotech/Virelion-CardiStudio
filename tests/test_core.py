@@ -86,7 +86,7 @@ def test_no_boundary_spike_from_truncation():
     values = np.array([row["x"] for row in population.rows])
     boundary_fraction = np.mean((values == -1) | (values == 1))
     assert boundary_fraction < 0.01
-    assert population.provenance["generation"]["truncation_rejection_rates"]["x"]["a"] > 0.5
+    assert population.provenance["generation"]["truncation_probability_mass"]["x"]["a"] > 0.5
 
 
 def test_ground_truth_recorded():
