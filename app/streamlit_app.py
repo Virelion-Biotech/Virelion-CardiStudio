@@ -28,14 +28,13 @@ if generate or "population" not in st.session_state:
                 st.error("Upload a challenge JSON before generating.")
                 st.stop()
             payload = json.load(uploaded)
-            spec = load_challenge(uploaded.name) if False else None
             from pathlib import Path
             import tempfile
-            with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
-                json.dump(payload, handle)
-                temp_path = handle.name
-            spec = load_challenge(temp_path)
-            spec.population.seed = int(seed)
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_path = Path(temp_dir) / "challenge.json"
+                temp_path.write_text(json.dumps(payload), encoding="utf-8")
+                spec = load_challenge(temp_path)
+                spec.population.seed = int(seed)
         else:
             spec = cardiac_mi_vs_sham(int(n), int(seed))
         population = PopulationBuilder(spec).build()
