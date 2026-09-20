@@ -232,7 +232,7 @@ class PopulationBuilder:
 
     def _sample_group(
         self, rows: list[dict[str, Any]], group: str, seed: int
-    ) -> tuple[dict[str, np.ndarray], dict[str, float]]:
+    ) -> tuple[dict[str, np.ndarray], dict[str, float], dict[str, Any]]:
         n = len(rows)
         d = len(self.latent_features)
         p = self.spec.population
