@@ -33,7 +33,7 @@ def _split_top_level_implies(expression: str) -> tuple[str, str] | None:
     i = 0
     while i <= len(expression) - 9:
         ch = expression[i]
-        if ch in {"\" ", "'"}:
+        if ch in {"\"", "'"}:
             if in_quote == ch:
                 in_quote = None
             elif in_quote is None:
