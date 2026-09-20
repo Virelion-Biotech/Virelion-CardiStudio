@@ -3,7 +3,7 @@ from pathlib import Path
 from .presets import cardiac_mi_vs_sham
 from .population import PopulationBuilder
 from .validation import validate_challenge, validate_population
-from .io import load_challenge, load_population, save_challenge, save_population, save_csv
+from .io import load_challenge, load_population, save_challenge, save_population, save_csv, export_cardi_bridge
 from .analysis import summarize_population
 
 def main():
@@ -15,7 +15,11 @@ def main():
     a = p.parse_args()
     if a.cmd == "demo":
         spec = cardiac_mi_vs_sham(a.n, a.seed); out = Path(a.output); out.mkdir(parents=True, exist_ok=True)
-        pop = PopulationBuilder(spec).build(); save_challenge(spec, out/"challenge.json"); save_population(pop, out/"population.jsonl"); save_csv(pop.rows, out/"population.csv")
+        pop = PopulationBuilder(spec).build()
+        save_challenge(spec, out/"challenge.json")
+        save_population(pop, out/"population.jsonl")
+        save_csv(pop.rows, out/"population.csv")
+        export_cardi_bridge(spec, pop, out/"cardi_bridge.json")
         (out/"summary.json").write_text(json.dumps(summarize_population(pop.rows), indent=2), encoding="utf-8")
         print(f"Generated {len(pop.rows)} rows at {out} | fingerprint={spec.fingerprint()}")
     elif a.cmd == "validate":
