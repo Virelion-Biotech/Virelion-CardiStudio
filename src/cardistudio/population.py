@@ -442,7 +442,7 @@ class PopulationBuilder:
             "synthetic": True,
             "hierarchy": ground_truth["hierarchy"],
             "generation": {
-                "truncation_rejection_rates": truncation_rates,
+                "truncation_probability_mass": truncation_rates,
                 "constraint_enforcement": "generative_resampling"
                     if self.constraint_engine.constraints else "not_configured",
                 "constraint_rejected_rows": constraint_rejected,
