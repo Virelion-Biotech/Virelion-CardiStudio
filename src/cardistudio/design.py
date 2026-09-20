@@ -29,7 +29,13 @@ class ExperimentalDesign:
             for rep in range(1, self.replicates + 1):
                 for cell in cells:
                     row = dict(cell, block=block, replicate=rep)
-                    row["design_id"] = f"D-{len(rows)+1:06d}"
+                    canonical = __import__("json").dumps(
+                        {"factors": cell, "replicate": rep, "seed": self.seed},
+                        sort_keys=True,
+                        default=str,
+                    )
+                    row["cell_id"] = __import__("hashlib").sha256(canonical.encode()).hexdigest()[:16]
+                    row["design_id"] = row["cell_id"]
                     rows.append(row)
         if self.randomize:
             import random
