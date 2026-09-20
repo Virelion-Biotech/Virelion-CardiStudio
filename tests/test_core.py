@@ -140,3 +140,30 @@ def test_fingerprint_changes_with_spec():
     a = cardiac_mi_vs_sham(100, 1)
     b = cardiac_mi_vs_sham(100, 2)
     assert a.fingerprint() != b.fingerprint()
+
+
+def test_validation_error_paths():
+    bad = cardiac_mi_vs_sham(20, 1)
+    bad.population.groups["mi"] += 1
+    assert not validate_challenge(bad).valid
+
+    duplicate = cardiac_mi_vs_sham(20, 1)
+    duplicate.features[1].name = duplicate.features[0].name
+    assert not validate_challenge(duplicate).valid
+
+    invalid_category = ChallengeSpec(
+        name="bad-category",
+        population=PopulationSpec(n=4, groups={"a": 2, "b": 2}),
+        features=[
+            FeatureSpec("cat", "categorical", "categorical", {"categories": []})
+        ],
+    )
+    assert not validate_challenge(invalid_category).valid
+
+    invalid_effect = cardiac_mi_vs_sham(20, 1)
+    invalid_effect.features[2].effects["missing"] = {"shift": 1}
+    assert not validate_challenge(invalid_effect).valid
+
+    invalid_corr = cardiac_mi_vs_sham(20, 1)
+    invalid_corr.population.correlation[0][1] = 2
+    assert not validate_challenge(invalid_corr).valid
