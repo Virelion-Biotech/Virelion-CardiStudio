@@ -10,11 +10,13 @@ from jsonschema import Draft202012Validator
 from .models import ChallengeSpec, migrate_challenge_dict
 from .population import Population
 
-_SCHEMA_PATH = Path(__file__).resolve().parents[2] / "schemas" / "cardistudio.challenge.v1.json"
+_SOURCE_SCHEMA_PATH = Path(__file__).resolve().parents[2] / "schemas" / "cardistudio.challenge.v1.json"
+_PACKAGE_SCHEMA_PATH = Path(__file__).with_name("challenge_schema.json")
 
 
 def _validate_schema(data: dict[str, Any]) -> None:
-    schema = json.loads(_SCHEMA_PATH.read_text(encoding="utf-8"))
+    schema_path = _SOURCE_SCHEMA_PATH if _SOURCE_SCHEMA_PATH.exists() else _PACKAGE_SCHEMA_PATH
+    schema = json.loads(schema_path.read_text(encoding="utf-8"))
     errors = sorted(Draft202012Validator(schema).iter_errors(data), key=lambda e: list(e.path))
     if errors:
         details = "; ".join(
