@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+title: "Virelion CardiStudio"
+version: "0.2.0"
+message: "Please cite CardiStudio when using it for computational study design or synthetic benchmark generation."
+authors:
+  - family-names: Hannan
+    given-names: Syed Umer
+license: "AGPL-3.0-or-later"
+repository-code: "https://github.com/Virelion-Biotech/Virelion-CardiStudio"
