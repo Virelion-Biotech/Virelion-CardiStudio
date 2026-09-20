@@ -11,6 +11,7 @@ from typing import Any
 import numpy as np
 from scipy.stats import norm, truncnorm
 
+from .constraints import ConstraintEngine
 from .correlations import gaussian_copula, validate_correlation
 from .models import ChallengeSpec, FeatureSpec
 
@@ -41,6 +42,12 @@ class PopulationBuilder:
         self.rng = np.random.default_rng(spec.population.seed)
         self.latent_features = [f for f in spec.features if f.distribution in self._LATENT_DISTRIBUTIONS]
         self._feature_index = {f.name: i for i, f in enumerate(self.latent_features)}
+        p = spec.population
+        available = {
+            "population_id", p.group_field, p.subject_field, p.section_field,
+            p.observation_field, "biological_replicate", "synthetic",
+        } | {f.name for f in spec.features}
+        self.constraint_engine = ConstraintEngine.from_specs(spec.constraints, available)
         self._correlation = self._build_correlation()
 
     def _build_correlation(self) -> np.ndarray:
@@ -257,7 +264,12 @@ class PopulationBuilder:
             x, truncation = self._sample_feature(feature, z, group, n, rng)
             values[feature.name] = x
             truncations[feature.name] = truncation
-        return values, truncations
+        return values, truncations, {
+            "subject_latent": subject_latent,
+            "residual_latent": residual_latent,
+            "row_subject_index": row_subject_index,
+            "rng": rng,
+        }
 
     @staticmethod
     def _apply(rows: list[dict[str, Any]], indices: list[int], values: dict[str, np.ndarray]) -> None:
@@ -341,12 +353,66 @@ class PopulationBuilder:
 
         rows, by_group = self._make_structure()
         truncation_rates: dict[str, dict[str, float]] = {}
+        group_states: dict[str, dict[str, Any]] = {}
         for offset, (group, indices) in enumerate(by_group.items()):
             group_rows = [rows[i] for i in indices]
-            values, rates = self._sample_group(group_rows, group, p.seed + 1009 * (offset + 1))
+            values, rates, state = self._sample_group(
+                group_rows, group, p.seed + 1009 * (offset + 1)
+            )
             self._apply(rows, indices, values)
+            group_states[group] = {"indices": indices, "state": state}
             for feature, rate in rates.items():
                 truncation_rates.setdefault(feature, {})[group] = rate
+
+        constraint_rejected = 0
+        constraint_candidates = 0
+        if self.constraint_engine.constraints:
+            inverse = {
+                global_i: (group, local_i)
+                for group, info in group_states.items()
+                for local_i, global_i in enumerate(info["indices"])
+            }
+            for _ in range(100):
+                report = self.constraint_engine.validate(rows)
+                error_rows = sorted({
+                    v["row"] for v in report.violations if v["severity"] == "error"
+                })
+                if not error_rows:
+                    break
+                constraint_rejected += len(error_rows)
+                for global_i in error_rows:
+                    group, local_i = inverse[global_i]
+                    info = group_states[group]
+                    state = info["state"]
+                    residual = gaussian_copula(
+                        1, self._correlation.tolist(), seed=int(
+                            state["rng"].integers(0, 2**32 - 1)
+                        )
+                    )[0] if self.latent_features else np.empty(0)
+                    rho = p.intraclass_correlation
+                    row_z = (
+                        math.sqrt(rho) * state["subject_latent"][state["row_subject_index"][local_i]]
+                        + math.sqrt(1.0 - rho) * residual
+                    ) if self.latent_features else np.empty(0)
+                    one_row = [rows[global_i]]
+                    for feature in self.spec.features:
+                        z = None
+                        if feature.name in self._feature_index:
+                            z = np.asarray([row_z[self._feature_index[feature.name]]])
+                        x, _ = self._sample_feature(
+                            feature, z, group, 1, state["rng"]
+                        )
+                        value = x[0]
+                        one_row[0][feature.name] = (
+                            value.item() if hasattr(value, "item") else value
+                        )
+                    constraint_candidates += 1
+            else:
+                raise ValueError("Could not satisfy declarative constraints during generation")
+
+        final_report = self.constraint_engine.validate(rows)
+        if not final_report.valid:
+            raise ValueError("Generated population violates one or more error constraints")
 
         ground_truth = self._ground_truth(rows)
         payload = json.dumps(rows, sort_keys=True, separators=(",", ":"), default=str).encode()
@@ -360,7 +426,14 @@ class PopulationBuilder:
             "hierarchy": ground_truth["hierarchy"],
             "generation": {
                 "truncation_rejection_rates": truncation_rates,
-                "constraint_enforcement": "not_configured",
+                "constraint_enforcement": "generative_resampling"
+                    if self.constraint_engine.constraints else "not_configured",
+                "constraint_rejected_rows": constraint_rejected,
+                "constraint_candidate_draws": constraint_candidates,
+                "constraint_rejection_rate": (
+                    constraint_rejected / constraint_candidates
+                    if constraint_candidates else 0.0
+                ),
             },
             "ground_truth": ground_truth,
             "population_sha256": hashlib.sha256(payload).hexdigest(),
