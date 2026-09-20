@@ -81,7 +81,7 @@ with tab3:
         if f.name in {"ejection_fraction", "fibrosis_fraction", "heart_rate"}
     ]
     if continuous and spec.population.group_field in population.rows[0]:
-        default_feature = "ejection_fraction" if "ejection_fraction" in continuous else continuous[0]
+        default_feature = (\n            "ejection_fraction"\n            if "ejection_fraction" in continuous\n            else continuous[0]\n        )
         feature = st.selectbox("Feature", continuous, index=continuous.index(default_feature))
         figure = px.box(
             population.rows,
