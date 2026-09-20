@@ -47,8 +47,8 @@ def subject_exponential_long(
     subject_ids: Iterable[str], spec: TrajectorySpec, seed: int = 42
 ) -> list[dict[str, float | str]]:
     """Attach subject trajectories to repeated-measures long format."""
-    values = exponential_recovery(spec, len(list(subject_ids)), seed)
     ids = [str(x) for x in subject_ids]
+    values = exponential_recovery(spec, len(ids), seed)
     return [
         {"subject_id": sid, "time": float(t), "value": float(values[i, j])}
         for i, sid in enumerate(ids)
