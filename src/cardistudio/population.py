@@ -40,7 +40,7 @@ class PopulationBuilder:
     def __init__(self, spec: ChallengeSpec):
         self.spec = spec
         self.rng = np.random.default_rng(spec.population.seed)
-        self.latent_features = [f for f in spec.features if f.distribution in self._LATENT_DISTRIBUTIONS]
+        self.latent_features = [\n            f for f in spec.features if f.distribution in self._LATENT_DISTRIBUTIONS\n        ]
         self._feature_index = {f.name: i for i, f in enumerate(self.latent_features)}
         p = spec.population
         available = {
@@ -81,7 +81,7 @@ class PopulationBuilder:
         if scale <= 0:
             raise ValueError(f"{feature.name}: effect scale must be > 0 for group {group!r}")
         if feature.distribution in {"bernoulli", "categorical"} and (shift or scale != 1.0):
-            raise ValueError(f"{feature.name}: affine effects are unsupported for {feature.distribution}")
+            raise ValueError(\n                f"{feature.name}: affine effects are unsupported for {feature.distribution}"\n            )
         return shift, scale
 
     @staticmethod
@@ -151,7 +151,7 @@ class PopulationBuilder:
         raise ValueError(f"Unsupported continuous distribution: {d}")
 
     def _sample_feature(
-        self, feature: FeatureSpec, z: np.ndarray | None, group: str, n: int, rng: np.random.Generator
+        self,\n        feature: FeatureSpec,\n        z: np.ndarray | None,\n        group: str,\n        n: int,\n        rng: np.random.Generator,
     ) -> tuple[np.ndarray, float]:
         d = feature.distribution
         if d in self._LATENT_DISTRIBUTIONS:
@@ -243,7 +243,7 @@ class PopulationBuilder:
         row_subject_index = np.asarray([subject_index[sid] for sid in subject_ids], dtype=int)
 
         if d:
-            subject_latent = gaussian_copula(len(unique_subjects), self._correlation.tolist(), seed + 1)
+            subject_latent = gaussian_copula(\n                len(unique_subjects), self._correlation.tolist(), seed + 1\n            )
             residual_latent = gaussian_copula(n, self._correlation.tolist(), seed + 2)
         else:
             subject_latent = np.empty((len(unique_subjects), 0))
@@ -272,7 +272,7 @@ class PopulationBuilder:
         }
 
     @staticmethod
-    def _apply(rows: list[dict[str, Any]], indices: list[int], values: dict[str, np.ndarray]) -> None:
+    def _apply(\n        rows: list[dict[str, Any]],\n        indices: list[int],\n        values: dict[str, np.ndarray],\n    ) -> None:
         for name, array in values.items():
             for local_i, global_i in enumerate(indices):
                 value = array[local_i]
@@ -408,7 +408,7 @@ class PopulationBuilder:
                     )[0] if self.latent_features else np.empty(0)
                     rho = p.intraclass_correlation
                     row_z = (
-                        math.sqrt(rho) * state["subject_latent"][state["row_subject_index"][local_i]]
+                        math.sqrt(rho)\n                        * state["subject_latent"][state["row_subject_index"][local_i]]
                         + math.sqrt(1.0 - rho) * residual
                     ) if self.latent_features else np.empty(0)
                     one_row = [rows[global_i]]
