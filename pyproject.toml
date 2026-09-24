@@ -4,7 +4,7 @@ version = "0.2.0"
 description = "Reproducible cardiac challenge-population studio"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["numpy>=1.26", "scipy>=1.11", "jsonschema>=4.20"]
+dependencies = ["numpy>=1.26,<2.5", "scipy>=1.11", "jsonschema>=4.20"]
 
 [project.optional-dependencies]
 analysis = ["pandas>=2.0", "plotly>=5.18"]
