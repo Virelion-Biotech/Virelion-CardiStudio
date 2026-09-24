@@ -233,7 +233,8 @@ class PopulationBuilder:
                 indices.append(len(rows) - 1)
             by_group[str(group)] = indices
 
-        self.rng.shuffle(rows)  # type: ignore[arg-type]  # NumPy accepts list-like inputs at runtime
+        order = self.rng.permutation(len(rows)).tolist()
+        rows[:] = [rows[int(i)] for i in order]
         remapped: dict[str, list[int]] = {group: [] for group in by_group}
         for i, row in enumerate(rows, start=1):
             row["population_id"] = f"CS-{i:06d}"
