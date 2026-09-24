@@ -25,14 +25,18 @@ class ExperimentalDesign:
             raise ValueError("replicates and blocks must be >= 1")
         if not self.factors or any(not f.levels for f in self.factors):
             raise ValueError("At least one factor with levels is required")
-        factor_names = [f.name for f in self.factors]\n        cells = [\n            dict(zip(factor_names, levels))\n            for levels in product(*(f.levels for f in self.factors))\n        ]
+        factor_names = [f.name for f in self.factors]
+        cells = [
+            dict(zip(factor_names, levels))
+            for levels in product(*(f.levels for f in self.factors))
+        ]
         rows = []
         for block in range(1, self.blocks + 1):
             for rep in range(1, self.replicates + 1):
                 for cell in cells:
                     row = dict(cell, block=block, replicate=rep)
                     canonical = json.dumps(
-                        {"factors": cell, "replicate": rep, "seed": self.seed},
+                        {"factors": cell, "block": block, "replicate": rep, "seed": self.seed},
                         sort_keys=True,
                         default=str,
                     )
@@ -55,7 +59,18 @@ class ExperimentalDesign:
         return math.prod(len(f.levels) for f in self.factors)
 
 
-def full_factorial(\n    factors: dict[str, list[Any]],\n    replicates: int = 1,\n    blocks: int = 1,\n    seed: int = 42,\n) -> ExperimentalDesign:
-    d = ExperimentalDesign(\n        [Factor(k, tuple(v)) for k, v in factors.items()],\n        replicates,\n        blocks,\n        True,\n        seed,\n    )
+def full_factorial(
+    factors: dict[str, list[Any]],
+    replicates: int = 1,
+    blocks: int = 1,
+    seed: int = 42,
+) -> ExperimentalDesign:
+    d = ExperimentalDesign(
+        [Factor(k, tuple(v)) for k, v in factors.items()],
+        replicates,
+        blocks,
+        True,
+        seed,
+    )
     d.generate()
     return d

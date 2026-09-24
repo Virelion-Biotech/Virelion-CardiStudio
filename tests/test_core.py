@@ -92,7 +92,10 @@ def test_no_boundary_spike_from_truncation():
 def test_ground_truth_recorded():
     population = PopulationBuilder(cardiac_mi_vs_sham(1000, 2)).build()
     ground_truth = population.provenance["ground_truth"]
-    assert (\n        ground_truth["feature_effects"]["ejection_fraction"]["mi"]["shift"]\n        == pytest.approx(-0.22)\n    )
+    assert (
+        ground_truth["feature_effects"]["ejection_fraction"]["mi"]["shift"]
+        == pytest.approx(-0.22)
+    )
     assert "mi_vs_sham" in ground_truth["comparisons"]
     assert ground_truth["copula"]["target_correlation"][2][3] == pytest.approx(-0.55)
 

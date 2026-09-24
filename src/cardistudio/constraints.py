@@ -144,12 +144,11 @@ def declarative_constraint(
                 f"Constraint {name!r} references unknown fields: {sorted(unknown)}"
             )
     tree = _parse(expression)
-    return Constraint(
-        name,
-        lambda row, t=tree: bool(_evaluate(t, row)),
-        severity,
-        expression,
-    )
+
+    def predicate(row: dict[str, Any]) -> bool:
+        return bool(_evaluate(tree, row))
+
+    return Constraint(name, predicate, severity, expression)
 
 
 class ConstraintEngine:

@@ -40,7 +40,9 @@ class PopulationBuilder:
     def __init__(self, spec: ChallengeSpec):
         self.spec = spec
         self.rng = np.random.default_rng(spec.population.seed)
-        self.latent_features = [\n            f for f in spec.features if f.distribution in self._LATENT_DISTRIBUTIONS\n        ]
+        self.latent_features = [
+            f for f in spec.features if f.distribution in self._LATENT_DISTRIBUTIONS
+        ]
         self._feature_index = {f.name: i for i, f in enumerate(self.latent_features)}
         p = spec.population
         available = {
@@ -81,7 +83,9 @@ class PopulationBuilder:
         if scale <= 0:
             raise ValueError(f"{feature.name}: effect scale must be > 0 for group {group!r}")
         if feature.distribution in {"bernoulli", "categorical"} and (shift or scale != 1.0):
-            raise ValueError(\n                f"{feature.name}: affine effects are unsupported for {feature.distribution}"\n            )
+            raise ValueError(
+                f"{feature.name}: affine effects are unsupported for {feature.distribution}"
+            )
         return shift, scale
 
     @staticmethod
@@ -151,7 +155,12 @@ class PopulationBuilder:
         raise ValueError(f"Unsupported continuous distribution: {d}")
 
     def _sample_feature(
-        self,\n        feature: FeatureSpec,\n        z: np.ndarray | None,\n        group: str,\n        n: int,\n        rng: np.random.Generator,
+        self,
+        feature: FeatureSpec,
+        z: np.ndarray | None,
+        group: str,
+        n: int,
+        rng: np.random.Generator,
     ) -> tuple[np.ndarray, float]:
         d = feature.distribution
         if d in self._LATENT_DISTRIBUTIONS:
@@ -169,7 +178,10 @@ class PopulationBuilder:
             )
             truncation = 0.0
         elif d == "constant":
-            x = np.repeat(feature.params.get("value"), n)
+            constant_value = feature.params.get("value")
+            if constant_value is None:
+                raise ValueError(f"{feature.name}: constant distribution requires a value")
+            x = np.repeat(constant_value, n)
             shift, scale = self._effect(feature, group)
             if shift or scale != 1.0:
                 x = np.asarray(x, dtype=float) * scale + shift
@@ -221,7 +233,8 @@ class PopulationBuilder:
                 indices.append(len(rows) - 1)
             by_group[str(group)] = indices
 
-        self.rng.shuffle(rows)
+        order = self.rng.permutation(len(rows)).tolist()
+        rows[:] = [rows[int(i)] for i in order]
         remapped: dict[str, list[int]] = {group: [] for group in by_group}
         for i, row in enumerate(rows, start=1):
             row["population_id"] = f"CS-{i:06d}"
@@ -243,7 +256,9 @@ class PopulationBuilder:
         row_subject_index = np.asarray([subject_index[sid] for sid in subject_ids], dtype=int)
 
         if d:
-            subject_latent = gaussian_copula(\n                len(unique_subjects), self._correlation.tolist(), seed + 1\n            )
+            subject_latent = gaussian_copula(
+                len(unique_subjects), self._correlation.tolist(), seed + 1
+            )
             residual_latent = gaussian_copula(n, self._correlation.tolist(), seed + 2)
         else:
             subject_latent = np.empty((len(unique_subjects), 0))
@@ -272,7 +287,11 @@ class PopulationBuilder:
         }
 
     @staticmethod
-    def _apply(\n        rows: list[dict[str, Any]],\n        indices: list[int],\n        values: dict[str, np.ndarray],\n    ) -> None:
+    def _apply(
+        rows: list[dict[str, Any]],
+        indices: list[int],
+        values: dict[str, np.ndarray],
+    ) -> None:
         for name, array in values.items():
             for local_i, global_i in enumerate(indices):
                 value = array[local_i]
@@ -378,8 +397,8 @@ class PopulationBuilder:
             )
             self._apply(rows, indices, values)
             group_states[group] = {"indices": indices, "state": state}
-            for feature, rate in rates.items():
-                truncation_rates.setdefault(feature, {})[group] = rate
+            for rate_feature, rate in rates.items():
+                truncation_rates.setdefault(rate_feature, {})[group] = rate
 
         constraint_rejected = 0
         constraint_candidates = 0
@@ -406,9 +425,10 @@ class PopulationBuilder:
                             state["rng"].integers(0, 2**32 - 1)
                         )
                     )[0] if self.latent_features else np.empty(0)
-                    rho = p.intraclass_correlation
+                    rho = self.spec.population.intraclass_correlation
                     row_z = (
-                        math.sqrt(rho)\n                        * state["subject_latent"][state["row_subject_index"][local_i]]
+                        math.sqrt(rho)
+                        * state["subject_latent"][state["row_subject_index"][local_i]]
                         + math.sqrt(1.0 - rho) * residual
                     ) if self.latent_features else np.empty(0)
                     one_row = [rows[global_i]]
