@@ -424,7 +424,7 @@ class PopulationBuilder:
                             state["rng"].integers(0, 2**32 - 1)
                         )
                     )[0] if self.latent_features else np.empty(0)
-                    rho = p.intraclass_correlation
+                    rho = self.spec.population.intraclass_correlation
                     row_z = (
                         math.sqrt(rho)
                         * state["subject_latent"][state["row_subject_index"][local_i]]
