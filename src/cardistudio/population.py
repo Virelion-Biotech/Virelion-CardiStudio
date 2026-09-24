@@ -178,7 +178,10 @@ class PopulationBuilder:
             )
             truncation = 0.0
         elif d == "constant":
-            x = np.repeat(feature.params.get("value"), n)
+            constant_value = feature.params.get("value")
+            if constant_value is None:
+                raise ValueError(f"{feature.name}: constant distribution requires a value")
+            x = np.repeat(constant_value, n)
             shift, scale = self._effect(feature, group)
             if shift or scale != 1.0:
                 x = np.asarray(x, dtype=float) * scale + shift
