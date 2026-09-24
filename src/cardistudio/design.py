@@ -36,7 +36,7 @@ class ExperimentalDesign:
                 for cell in cells:
                     row = dict(cell, block=block, replicate=rep)
                     canonical = json.dumps(
-                        {"factors": cell, "replicate": rep, "seed": self.seed},
+                        {"factors": cell, "block": block, "replicate": rep, "seed": self.seed},
                         sort_keys=True,
                         default=str,
                     )
