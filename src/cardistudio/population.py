@@ -396,8 +396,8 @@ class PopulationBuilder:
             )
             self._apply(rows, indices, values)
             group_states[group] = {"indices": indices, "state": state}
-            for feature, rate in rates.items():
-                truncation_rates.setdefault(feature, {})[group] = rate
+            for rate_feature, rate in rates.items():
+                truncation_rates.setdefault(rate_feature, {})[group] = rate
 
         constraint_rejected = 0
         constraint_candidates = 0
