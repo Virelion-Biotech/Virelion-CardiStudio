@@ -47,6 +47,8 @@ Primary mathematical references:
 
 A fresh installed-wheel environment with the app dependencies was audited with `pip-audit`; no known vulnerabilities were reported in the resolved third-party dependencies.
 
+A CPU stress check generated and validated the default preset at the app limit of 100,000 observations, seed 42. It completed in 12.98 seconds with 266.18 MiB peak resident memory in this Linux/Python 3.12 environment, 40 subjects and 1,702 constraint candidate draws. These measurements are environment-specific, not a latency guarantee.
+
 ## Interpretation and migration
 
 Version 0.3.0 intentionally changes seeded outputs where bounded distributions, integer bounds or variable recovery rates are involved. Regenerate affected benchmark data and retain package, NumPy and SciPy versions alongside the specification and seed. Reproducibility covers rows for the same environment and inputs; creation timestamps vary. Byte-for-byte equality across dependency versions is not promised.
