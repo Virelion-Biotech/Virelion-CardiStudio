@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 title: "Virelion CardiStudio"
-version: "0.2.0"
+version: "0.3.0"
 message: "Please cite CardiStudio when using it for computational study design or synthetic benchmark generation."
 authors:
   - family-names: Hannan

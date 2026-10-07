@@ -1,0 +1,214 @@
+{
+  "scope": "Computational/statistical validation; no empirical biological validation",
+  "package_version": "0.3.0",
+  "python": "3.12.14",
+  "numpy": "2.3.5",
+  "scipy": "1.17.0",
+  "passed": true,
+  "results": [
+    {
+      "check": "normal",
+      "seed": 3,
+      "observations": 4000,
+      "ks_statistic": 0.013488261118732248,
+      "maximum": 0.035
+    },
+    {
+      "check": "normal",
+      "seed": 17,
+      "observations": 4000,
+      "ks_statistic": 0.016418232876777683,
+      "maximum": 0.035
+    },
+    {
+      "check": "normal",
+      "seed": 91,
+      "observations": 4000,
+      "ks_statistic": 0.01082868002630244,
+      "maximum": 0.035
+    },
+    {
+      "check": "bounded_normal",
+      "seed": 3,
+      "observations": 4000,
+      "ks_statistic": 0.013488261118732359,
+      "maximum": 0.035
+    },
+    {
+      "check": "bounded_normal",
+      "seed": 17,
+      "observations": 4000,
+      "ks_statistic": 0.01641823287677774,
+      "maximum": 0.035
+    },
+    {
+      "check": "bounded_normal",
+      "seed": 91,
+      "observations": 4000,
+      "ks_statistic": 0.01082868002630244,
+      "maximum": 0.035
+    },
+    {
+      "check": "extreme_tail_normal",
+      "seed": 3,
+      "observations": 4000,
+      "ks_statistic": 0.013488261118700717,
+      "maximum": 0.035
+    },
+    {
+      "check": "extreme_tail_normal",
+      "seed": 17,
+      "observations": 4000,
+      "ks_statistic": 0.016418232876793115,
+      "maximum": 0.035
+    },
+    {
+      "check": "extreme_tail_normal",
+      "seed": 91,
+      "observations": 4000,
+      "ks_statistic": 0.01082868002630688,
+      "maximum": 0.035
+    },
+    {
+      "check": "bounded_uniform",
+      "seed": 3,
+      "observations": 4000,
+      "ks_statistic": 0.013488261118732248,
+      "maximum": 0.035
+    },
+    {
+      "check": "bounded_uniform",
+      "seed": 17,
+      "observations": 4000,
+      "ks_statistic": 0.016418232876777628,
+      "maximum": 0.035
+    },
+    {
+      "check": "bounded_uniform",
+      "seed": 91,
+      "observations": 4000,
+      "ks_statistic": 0.01082868002630244,
+      "maximum": 0.035
+    },
+    {
+      "check": "lognormal",
+      "seed": 3,
+      "observations": 4000,
+      "ks_statistic": 0.013488261118732248,
+      "maximum": 0.035
+    },
+    {
+      "check": "lognormal",
+      "seed": 17,
+      "observations": 4000,
+      "ks_statistic": 0.01641823287677774,
+      "maximum": 0.035
+    },
+    {
+      "check": "lognormal",
+      "seed": 91,
+      "observations": 4000,
+      "ks_statistic": 0.01082868002630244,
+      "maximum": 0.035
+    },
+    {
+      "check": "bounded_lognormal",
+      "seed": 3,
+      "observations": 4000,
+      "ks_statistic": 0.013488261118732359,
+      "maximum": 0.035
+    },
+    {
+      "check": "bounded_lognormal",
+      "seed": 17,
+      "observations": 4000,
+      "ks_statistic": 0.01641823287677774,
+      "maximum": 0.035
+    },
+    {
+      "check": "bounded_lognormal",
+      "seed": 91,
+      "observations": 4000,
+      "ks_statistic": 0.01082868002630244,
+      "maximum": 0.035
+    },
+    {
+      "check": "balanced_ANOVA_ICC_and_normal_correlation",
+      "target_icc": 0.0,
+      "seeds": [
+        3,
+        17,
+        91
+      ],
+      "subjects_per_seed": 1000,
+      "observations_per_subject": 6,
+      "icc_estimates": [
+        -0.011535235553651582,
+        -9.002192357401182e-05,
+        -0.008378619768096621
+      ],
+      "correlation_estimates": [
+        0.6489199584228977,
+        0.6528750302860863,
+        0.6354351369423821
+      ],
+      "target_correlation": 0.65,
+      "maximum_mean_absolute_error": 0.05
+    },
+    {
+      "check": "balanced_ANOVA_ICC_and_normal_correlation",
+      "target_icc": 0.35,
+      "seeds": [
+        3,
+        17,
+        91
+      ],
+      "subjects_per_seed": 1000,
+      "observations_per_subject": 6,
+      "icc_estimates": [
+        0.34845783866259694,
+        0.3514418631307314,
+        0.35129086731612674
+      ],
+      "correlation_estimates": [
+        0.6511606788175658,
+        0.6480340144706643,
+        0.6472446057811395
+      ],
+      "target_correlation": 0.65,
+      "maximum_mean_absolute_error": 0.05
+    },
+    {
+      "check": "balanced_ANOVA_ICC_and_normal_correlation",
+      "target_icc": 0.8,
+      "seeds": [
+        3,
+        17,
+        91
+      ],
+      "subjects_per_seed": 1000,
+      "observations_per_subject": 6,
+      "icc_estimates": [
+        0.8007218053836058,
+        0.7969635597867227,
+        0.8026434057907992
+      ],
+      "correlation_estimates": [
+        0.6501029230319264,
+        0.6449538234506041,
+        0.6648708057255576
+      ],
+      "target_correlation": 0.65,
+      "maximum_mean_absolute_error": 0.05
+    },
+    {
+      "check": "normal_approximation_power",
+      "seed": 117,
+      "trials": 100000,
+      "effect_size": 0.5,
+      "n_per_arm": 63,
+      "target_power": 0.8,
+      "achieved_power": 0.79971
+    }
+  ]
+}

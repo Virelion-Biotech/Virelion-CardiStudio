@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 from .analysis import summarize_population
 from .io import (
     export_cardi_bridge,
+    export_cardi_bridge_envelope,
     load_challenge,
     load_population,
     save_challenge,
@@ -18,7 +20,7 @@ from .presets import cardiac_mi_vs_sham
 from .validation import validate_challenge
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="cardistudio")
     subparsers = parser.add_subparsers(dest="cmd", required=True)
 
@@ -33,33 +35,39 @@ def main() -> None:
     summarize = subparsers.add_parser("summarize")
     summarize.add_argument("path")
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
-    if args.cmd == "demo":
-        spec = cardiac_mi_vs_sham(args.n, args.seed)
-        output = Path(args.output)
-        output.mkdir(parents=True, exist_ok=True)
-        population = PopulationBuilder(spec).build()
-        save_challenge(spec, output / "challenge.json")
-        save_population(population, output / "population.jsonl")
-        save_csv(population.rows, output / "population.csv")
-        export_cardi_bridge(spec, population, output / "cardi_bridge.json")
-        (output / "summary.json").write_text(
-            json.dumps(summarize_population(population.rows), indent=2),
-            encoding="utf-8",
-        )
-        print(
-            f"Generated {len(population.rows)} rows at {output} | "
-            f"fingerprint={spec.fingerprint()}"
-        )
-    elif args.cmd == "validate":
-        spec = load_challenge(args.path)
-        report = validate_challenge(spec)
-        print(json.dumps(report.__dict__, indent=2))
-        report.raise_if_invalid()
-    elif args.cmd == "summarize":
-        print(json.dumps(summarize_population(load_population(args.path)), indent=2))
+    try:
+        if args.cmd == "demo":
+            spec = cardiac_mi_vs_sham(args.n, args.seed)
+            output = Path(args.output)
+            population = PopulationBuilder(spec).build()
+            output.mkdir(parents=True, exist_ok=True)
+            save_challenge(spec, output / "challenge.json")
+            save_population(population, output / "population.jsonl")
+            save_csv(population.rows, output / "population.csv")
+            export_cardi_bridge(spec, population, output / "cardi_bridge.json")
+            export_cardi_bridge_envelope(spec, population, output / "bridge_envelope.json")
+            (output / "summary.json").write_text(
+                json.dumps(summarize_population(population.rows), indent=2),
+                encoding="utf-8",
+            )
+            print(
+                f"Generated {len(population.rows)} rows at {output} | "
+                f"fingerprint={spec.fingerprint()}"
+            )
+        elif args.cmd == "validate":
+            spec = load_challenge(args.path)
+            report = validate_challenge(spec)
+            print(json.dumps(report.__dict__, indent=2))
+            report.raise_if_invalid()
+        elif args.cmd == "summarize":
+            print(json.dumps(summarize_population(load_population(args.path)), indent=2))
+    except (ValueError, TypeError, OSError) as exc:
+        print(json.dumps({"valid": False, "error": str(exc)}), file=sys.stderr)
+        return 2
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

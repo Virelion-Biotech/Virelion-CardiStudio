@@ -9,13 +9,15 @@ def summarize_population(rows: list[dict]) -> dict[str, Any]:
     if not rows:
         return {"n": 0, "features": {}}
 
-    keys = [key for key in rows[0] if key != "population_id"]
+    keys = list(dict.fromkeys(key for row in rows for key in row if key != "population_id"))
     output: dict[str, Any] = {"n": len(rows), "features": {}}
     for key in keys:
         values = [row[key] for row in rows if row.get(key) is not None]
         if not values:
             continue
-        if isinstance(values[0], (int, float)) and not isinstance(values[0], bool):
+        if all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in values):
+            if not all(math.isfinite(v) for v in values):
+                raise ValueError(f"{key}: values must be finite")
             mean = sum(values) / len(values)
             variance = sum((value - mean) ** 2 for value in values) / max(1, len(values) - 1)
             output["features"][key] = {
@@ -36,15 +38,12 @@ def summarize_population(rows: list[dict]) -> dict[str, Any]:
     return output
 
 
-def balance_report(
-    rows: list[dict], group_field: str, features: list[str]
-) -> dict[str, Any]:
+def balance_report(rows: list[dict], group_field: str, features: list[str]) -> dict[str, Any]:
     groups = sorted({str(row.get(group_field)) for row in rows})
     result: dict[str, Any] = {
         "group_field": group_field,
         "groups": {
-            group: sum(str(row.get(group_field)) == group for row in rows)
-            for group in groups
+            group: sum(str(row.get(group_field)) == group for row in rows) for group in groups
         },
         "features": {},
     }
@@ -55,6 +54,7 @@ def balance_report(
                 for row in rows
                 if str(row.get(group_field)) == group
                 and isinstance(row.get(feature), (int, float))
+                and not isinstance(row.get(feature), bool)
             ]
             for group in groups
         }

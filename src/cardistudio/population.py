@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from copy import deepcopy
 from datetime import datetime, timezone
 from importlib.metadata import PackageNotFoundError, version
-import hashlib
-import json
 import math
+from collections import Counter
 from typing import Any
 
 import numpy as np
 from scipy.stats import norm, truncnorm
+
+from .serialization import canonical_json, population_digest
 
 from .constraints import ConstraintEngine
 from .correlations import gaussian_copula, validate_correlation
@@ -27,9 +29,7 @@ class Population:
     provenance: dict[str, Any]
 
     def to_jsonl(self) -> str:
-        return "\n".join(json.dumps(row, sort_keys=True, default=str) for row in self.rows) + (
-            "\n" if self.rows else ""
-        )
+        return "\n".join(canonical_json(row) for row in self.rows) + ("\n" if self.rows else "")
 
 
 class PopulationBuilder:
@@ -38,7 +38,10 @@ class PopulationBuilder:
     _LATENT_DISTRIBUTIONS = {"normal", "uniform", "lognormal"}
 
     def __init__(self, spec: ChallengeSpec):
-        self.spec = spec
+        from .validation import validate_challenge
+
+        self.spec = spec = deepcopy(spec)
+        validate_challenge(spec).raise_if_invalid()
         self.rng = np.random.default_rng(spec.population.seed)
         self.latent_features = [
             f for f in spec.features if f.distribution in self._LATENT_DISTRIBUTIONS
@@ -46,8 +49,13 @@ class PopulationBuilder:
         self._feature_index = {f.name: i for i, f in enumerate(self.latent_features)}
         p = spec.population
         available = {
-            "population_id", p.group_field, p.subject_field, p.section_field,
-            p.observation_field, "biological_replicate", "synthetic",
+            "population_id",
+            p.group_field,
+            p.subject_field,
+            p.section_field,
+            p.observation_field,
+            "biological_replicate",
+            "synthetic",
         } | {f.name for f in spec.features}
         self.constraint_engine = ConstraintEngine.from_specs(spec.constraints, available)
         self._correlation = self._build_correlation()
@@ -115,8 +123,7 @@ class PopulationBuilder:
             b = np.inf if feature.max_value is None else (feature.max_value - mean) / sd
             if a >= b:
                 raise ValueError(f"{feature.name}: bounds leave no probability support")
-            cdf_a, cdf_b = norm.cdf(a), norm.cdf(b)
-            q = cdf_a + norm.cdf(z) * (cdf_b - cdf_a)
+            q = np.clip(norm.cdf(z), np.nextafter(0.0, 1.0), np.nextafter(1.0, 0.0))
             return truncnorm.ppf(q, a, b, loc=mean, scale=sd), self._truncation_mass(
                 mean, sd, feature.min_value, feature.max_value
             )
@@ -139,18 +146,21 @@ class PopulationBuilder:
             sigma = float(p.get("sigma", 1.0)) * scale
             if sigma <= 0:
                 raise ValueError(f"{feature.name}: resulting sigma must be > 0")
-            low_log = None if feature.min_value is None else math.log(feature.min_value)
+            if feature.min_value is None and feature.max_value is None:
+                return np.exp(log_mean + sigma * z), 0.0
+            low_log = (
+                None
+                if feature.min_value is None or feature.min_value <= 0
+                else math.log(feature.min_value)
+            )
             high_log = None if feature.max_value is None else math.log(feature.max_value)
             a = -np.inf if low_log is None else (low_log - log_mean) / sigma
             b = np.inf if high_log is None else (high_log - log_mean) / sigma
             if a >= b:
                 raise ValueError(f"{feature.name}: lognormal bounds leave no support")
-            cdf_a, cdf_b = norm.cdf(a), norm.cdf(b)
-            q = cdf_a + norm.cdf(z) * (cdf_b - cdf_a)
+            q = np.clip(norm.cdf(z), np.nextafter(0.0, 1.0), np.nextafter(1.0, 0.0))
             log_x = truncnorm.ppf(q, a, b, loc=log_mean, scale=sigma)
-            return np.exp(log_x), self._truncation_mass(
-                log_mean, sigma, low_log, high_log
-            )
+            return np.exp(log_x), self._truncation_mass(log_mean, sigma, low_log, high_log)
 
         raise ValueError(f"Unsupported continuous distribution: {d}")
 
@@ -163,18 +173,46 @@ class PopulationBuilder:
         rng: np.random.Generator,
     ) -> tuple[np.ndarray, float]:
         d = feature.distribution
+        self._effect(feature, group)
         if d in self._LATENT_DISTRIBUTIONS:
+            if feature.dtype == "integer":
+                feature = replace(
+                    feature,
+                    min_value=(
+                        None if feature.min_value is None else math.ceil(feature.min_value) - 0.5
+                    ),
+                    max_value=(
+                        None if feature.max_value is None else math.floor(feature.max_value) + 0.5
+                    ),
+                )
             assert z is not None
             x, truncation = self._sample_continuous(feature, z, group)
         elif d == "bernoulli":
             prob = float(feature.params.get("prob", 0.5))
             if not 0 <= prob <= 1:
                 raise ValueError(f"{feature.name}: bernoulli probability must be in [0, 1]")
-            x = rng.binomial(1, prob, n)
-            truncation = 0.0
+            support = [
+                v
+                for v in (0, 1)
+                if (feature.min_value is None or v >= feature.min_value)
+                and (feature.max_value is None or v <= feature.max_value)
+            ]
+            retained = sum((prob if v else 1 - prob) for v in support)
+            if retained <= 0:
+                raise ValueError(f"{feature.name}: bounds leave no Bernoulli probability support")
+            conditional_prob = prob / retained if 1 in support else 0.0
+            x = rng.binomial(1, conditional_prob, n)
+            truncation = 1.0 - retained
         elif d == "categorical":
             x = rng.choice(
-                feature.params["categories"], size=n, p=feature.params.get("probabilities")
+                np.asarray(feature.params["categories"], dtype=object),
+                size=n,
+                p=(
+                    None
+                    if feature.params.get("probabilities") is None
+                    else np.asarray(feature.params["probabilities"], dtype=float)
+                    / sum(feature.params["probabilities"])
+                ),
             )
             truncation = 0.0
         elif d == "constant":
@@ -189,10 +227,26 @@ class PopulationBuilder:
         else:
             raise ValueError(f"Unsupported distribution: {d}")
 
+        if feature.dtype != "categorical" and not np.isfinite(np.asarray(x, dtype=float)).all():
+            raise ValueError(f"{feature.name}: sampled values must be finite")
         if feature.dtype == "integer":
-            x = np.rint(np.asarray(x, dtype=float)).astype(int)
+            x = np.asarray([int(v) for v in np.rint(np.asarray(x, dtype=float))], dtype=object)
+            if feature.min_value is not None:
+                x = np.maximum(
+                    x,
+                    math.ceil(feature.min_value + 0.5)
+                    if d in self._LATENT_DISTRIBUTIONS
+                    else math.ceil(feature.min_value),
+                )
+            if feature.max_value is not None:
+                x = np.minimum(
+                    x,
+                    math.floor(feature.max_value - 0.5)
+                    if d in self._LATENT_DISTRIBUTIONS
+                    else math.floor(feature.max_value),
+                )
         elif feature.dtype == "binary":
-            x = (np.asarray(x) > 0.5).astype(int)
+            x = np.asarray(x, dtype=int)
         return x, truncation
 
     def _make_structure(self) -> tuple[list[dict[str, Any]], dict[str, list[int]]]:
@@ -202,16 +256,15 @@ class PopulationBuilder:
         subject_number = 0
 
         for group, count in p.groups.items():
+            if count == 0:
+                by_group[group] = []
+                continue
             reps = min(p.biological_replicates, count)
-            subject_ids = [
-                f"SUB-{subject_number + i + 1:04d}" for i in range(reps)
-            ]
+            subject_ids = [f"SUB-{subject_number + i + 1:04d}" for i in range(reps)]
             subject_number += reps
             sizes = np.full(reps, count // reps, dtype=int)
             sizes[: count % reps] += 1
-            assignments = np.concatenate(
-                [np.repeat(subject_ids[i], sizes[i]) for i in range(reps)]
-            )
+            assignments = np.concatenate([np.repeat(subject_ids[i], sizes[i]) for i in range(reps)])
             self.rng.shuffle(assignments)
 
             indices: list[int] = []
@@ -279,12 +332,16 @@ class PopulationBuilder:
             x, truncation = self._sample_feature(feature, z, group, n, rng)
             values[feature.name] = x
             truncations[feature.name] = truncation
-        return values, truncations, {
-            "subject_latent": subject_latent,
-            "residual_latent": residual_latent,
-            "row_subject_index": row_subject_index,
-            "rng": rng,
-        }
+        return (
+            values,
+            truncations,
+            {
+                "subject_latent": subject_latent,
+                "residual_latent": residual_latent,
+                "row_subject_index": row_subject_index,
+                "rng": rng,
+            },
+        )
 
     @staticmethod
     def _apply(
@@ -320,6 +377,12 @@ class PopulationBuilder:
                 "sections_per_subject": self.spec.population.sections_per_subject,
                 "intraclass_correlation": self.spec.population.intraclass_correlation,
             },
+            "interpretation": {
+                "parameters": "Pre-truncation and pre-constraint distribution parameters",
+                "correlation": "Latent correlation; observed values may differ",
+                "icc": "Latent subject ICC; observed ICC may differ after transforms/constraints",
+                "sample_statistics": "Realized observations; not independent biological replicates",
+            },
             "comparisons": {},
         }
         if len(group_names) < 2:
@@ -343,22 +406,22 @@ class PopulationBuilder:
                     a = np.asarray(ref_values, dtype=float)
                     b = np.asarray(other_values, dtype=float)
                     entry: dict[str, Any] = {
-                        "sample_mean_ref": float(np.mean(a)),
-                        "sample_mean_other": float(np.mean(b)),
+                        "sample_mean_ref": float(np.mean(a)) if len(a) else None,
+                        "sample_mean_other": float(np.mean(b)) if len(b) else None,
                     }
-                    pooled = math.sqrt(
-                        (float(np.var(a, ddof=1)) + float(np.var(b, ddof=1))) / 2
+                    pooled = (
+                        math.sqrt((float(np.var(a, ddof=1)) + float(np.var(b, ddof=1))) / 2)
+                        if len(a) > 1 and len(b) > 1
+                        else 0.0
                     )
                     entry["sample_cohens_d"] = (
                         (float(np.mean(b)) - float(np.mean(a))) / pooled if pooled else None
                     )
                 else:
                     entry = {
-                        "sample_counts_ref": dict(
-                            zip(*np.unique(np.asarray(ref_values, dtype=str), return_counts=True))
-                        ),
+                        "sample_counts_ref": dict(Counter(canonical_json(v) for v in ref_values)),
                         "sample_counts_other": dict(
-                            zip(*np.unique(np.asarray(other_values, dtype=str), return_counts=True))
+                            Counter(canonical_json(v) for v in other_values)
                         ),
                     }
                     entry["sample_cohens_d"] = None
@@ -379,7 +442,11 @@ class PopulationBuilder:
         return truth
 
     def build(self) -> Population:
+        from .validation import validate_challenge, validate_population
+
+        validate_challenge(self.spec).raise_if_invalid()
         p = self.spec.population
+        self.rng = np.random.default_rng(p.seed)
         if sum(p.groups.values()) != p.n:
             raise ValueError("Population group counts must sum to n")
         if p.biological_replicates < 1 or p.sections_per_subject < 1:
@@ -391,6 +458,8 @@ class PopulationBuilder:
         truncation_rates: dict[str, dict[str, float]] = {}
         group_states: dict[str, dict[str, Any]] = {}
         for offset, (group, indices) in enumerate(by_group.items()):
+            if not indices:
+                continue
             group_rows = [rows[i] for i in indices]
             values, rates, state = self._sample_group(
                 group_rows, group, p.seed + 1009 * (offset + 1)
@@ -410,9 +479,9 @@ class PopulationBuilder:
             }
             for _ in range(100):
                 report = self.constraint_engine.validate(rows)
-                error_rows = sorted({
-                    v["row"] for v in report.violations if v["severity"] == "error"
-                })
+                error_rows = sorted(
+                    {v["row"] for v in report.violations if v["severity"] == "error"}
+                )
                 if not error_rows:
                     break
                 constraint_rejected += len(error_rows)
@@ -420,29 +489,33 @@ class PopulationBuilder:
                     group, local_i = inverse[global_i]
                     info = group_states[group]
                     state = info["state"]
-                    residual = gaussian_copula(
-                        1, self._correlation.tolist(), seed=int(
-                            state["rng"].integers(0, 2**32 - 1)
-                        )
-                    )[0] if self.latent_features else np.empty(0)
+                    residual = (
+                        gaussian_copula(
+                            1,
+                            self._correlation.tolist(),
+                            seed=int(state["rng"].integers(0, 2**32 - 1)),
+                        )[0]
+                        if self.latent_features
+                        else np.empty(0)
+                    )
                     rho = self.spec.population.intraclass_correlation
                     row_z = (
-                        math.sqrt(rho)
-                        * state["subject_latent"][state["row_subject_index"][local_i]]
-                        + math.sqrt(1.0 - rho) * residual
-                    ) if self.latent_features else np.empty(0)
+                        (
+                            math.sqrt(rho)
+                            * state["subject_latent"][state["row_subject_index"][local_i]]
+                            + math.sqrt(1.0 - rho) * residual
+                        )
+                        if self.latent_features
+                        else np.empty(0)
+                    )
                     one_row = [rows[global_i]]
                     for feature in self.spec.features:
                         z = None
                         if feature.name in self._feature_index:
                             z = np.asarray([row_z[self._feature_index[feature.name]]])
-                        x, _ = self._sample_feature(
-                            feature, z, group, 1, state["rng"]
-                        )
+                        x, _ = self._sample_feature(feature, z, group, 1, state["rng"])
                         value = x[0]
-                        one_row[0][feature.name] = (
-                            value.item() if hasattr(value, "item") else value
-                        )
+                        one_row[0][feature.name] = value.item() if hasattr(value, "item") else value
                     constraint_candidates += 1
             else:
                 raise ValueError("Could not satisfy declarative constraints during generation")
@@ -452,7 +525,7 @@ class PopulationBuilder:
             raise ValueError("Generated population violates one or more error constraints")
 
         ground_truth = self._ground_truth(rows)
-        payload = json.dumps(rows, sort_keys=True, separators=(",", ":"), default=str).encode()
+        validate_population(rows, self.spec).raise_if_invalid()
         provenance = {
             "created_at": datetime.now(timezone.utc).isoformat(),
             "seed": p.seed,
@@ -464,15 +537,19 @@ class PopulationBuilder:
             "generation": {
                 "truncation_probability_mass": truncation_rates,
                 "constraint_enforcement": "generative_resampling"
-                    if self.constraint_engine.constraints else "not_configured",
+                if self.constraint_engine.constraints
+                else "not_configured",
                 "constraint_rejected_rows": constraint_rejected,
                 "constraint_candidate_draws": constraint_candidates,
                 "constraint_rejection_rate": (
-                    constraint_rejected / constraint_candidates
-                    if constraint_candidates else 0.0
+                    constraint_rejected / constraint_candidates if constraint_candidates else 0.0
                 ),
             },
             "ground_truth": ground_truth,
-            "population_sha256": hashlib.sha256(payload).hexdigest(),
+            "population_sha256": population_digest(rows),
+            "actual_subjects_per_group": {
+                group: len({row[p.subject_field] for row in rows if row[p.group_field] == group})
+                for group in p.groups
+            },
         }
         return Population(rows, provenance)

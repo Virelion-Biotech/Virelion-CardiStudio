@@ -16,10 +16,13 @@ CardiStudio is a reproducible Python toolkit for experimental design, synthetic 
 
 Synthetic outputs are simulations, not empirical patient, animal, or cell measurements.
 
+The CPU audit, numerical results, validation scope, and migration notes are in [validation/README.md](validation/README.md).
+
 ## Installation
 
 ```bash
-pip install -e '.[dev]'
+pip install -e '.[dev,app]'
+streamlit run app/streamlit_app.py
 ```
 
 ## Example
@@ -41,7 +44,21 @@ The built-in MI-vs-sham preset contains explicit effects for ejection fraction, 
 
 The population rows are generated from the challenge specification and seed. The provenance record includes the challenge fingerprint, generator version, hierarchy settings, truncation mass removed by bounds, configured effects, target correlation, and a SHA-256 fingerprint of the generated rows.
 
+Bounded sampling was corrected in 0.3.0, so affected seeded populations must be regenerated. Pin generator and numerical dependency versions for reproducible benchmarks. Creation timestamps are not deterministic.
+
 The generator's version is read from installed package metadata, so provenance does not depend on a duplicated hardcoded release string.
+
+Verified population loading requires the JSONL and its `.provenance.json` sidecar.
+Use `load_population(path, verify_provenance=False)` only for deliberate standalone
+JSONL loading without digest verification.
+
+For CardiBridge transport, use `cardi_bridge_envelope(spec, population)` or
+`export_cardi_bridge_envelope(spec, population, path)`. The legacy
+`export_cardi_bridge` exports a CardiStudio study bundle.
+
+Configured ICC and correlation are latent Gaussian parameters. Transforms, rounding,
+truncation and constraints can change observed statistics. Sections identify nested
+observations but do not introduce another random effect.
 
 ## Constraints
 
@@ -74,7 +91,8 @@ It is not a substitute for the final analysis model.
 pytest
 ruff check .
 python -m mypy src
-python -m compileall src
+python -m compileall src app
+python validation/run_cpu_validation.py
 ```
 
 The test suite checks statistical behavior, hierarchy, truncation behavior, correlation recovery, constraint enforcement, schema migration, deterministic IDs, I/O, and power inflation.

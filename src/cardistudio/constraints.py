@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import ast
+import math
+import operator
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -20,10 +22,31 @@ class ConstraintReport:
 
 
 _ALLOWED_NODES = (
-    ast.Expression, ast.BoolOp, ast.And, ast.Or, ast.Compare, ast.Name, ast.Load,
-    ast.Constant, ast.UnaryOp, ast.Not, ast.UAdd, ast.USub, ast.BinOp, ast.Add,
-    ast.Sub, ast.Mult, ast.Div, ast.Pow, ast.Mod, ast.Lt, ast.LtE, ast.Gt, ast.GtE,
-    ast.Eq, ast.NotEq,
+    ast.Expression,
+    ast.BoolOp,
+    ast.And,
+    ast.Or,
+    ast.Compare,
+    ast.Name,
+    ast.Load,
+    ast.Constant,
+    ast.UnaryOp,
+    ast.Not,
+    ast.UAdd,
+    ast.USub,
+    ast.BinOp,
+    ast.Add,
+    ast.Sub,
+    ast.Mult,
+    ast.Div,
+    ast.Pow,
+    ast.Mod,
+    ast.Lt,
+    ast.LtE,
+    ast.Gt,
+    ast.GtE,
+    ast.Eq,
+    ast.NotEq,
 )
 
 
@@ -33,7 +56,7 @@ def _split_top_level_implies(expression: str) -> tuple[str, str] | None:
     i = 0
     while i <= len(expression) - 9:
         ch = expression[i]
-        if ch in {"\"", "'"}:
+        if ch in {'"', "'"}:
             if in_quote == ch:
                 in_quote = None
             elif in_quote is None:
@@ -54,8 +77,22 @@ def _parse(expression: str) -> ast.Expression:
     if implication:
         lhs, rhs = implication
         expression = f"(not ({lhs})) or ({rhs})"
-    tree = ast.parse(expression, mode="eval")
+    if len(expression) > 2048:
+        raise ValueError("Constraint expression is too long")
+    try:
+        tree = ast.parse(expression, mode="eval")
+    except (SyntaxError, RecursionError) as exc:
+        raise ValueError("Invalid constraint expression syntax") from exc
+    if sum(1 for _ in ast.walk(tree)) > 128:
+        raise ValueError("Constraint expression is too complex")
     for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float, complex)):
+            try:
+                finite = not isinstance(node.value, complex) and math.isfinite(node.value)
+            except OverflowError:
+                finite = False
+            if not finite:
+                raise ValueError("Constraint numeric constants must be finite real numbers")
         if not isinstance(node, _ALLOWED_NODES):
             raise ValueError(f"Unsupported expression element: {type(node).__name__}")
     return tree
@@ -74,9 +111,12 @@ def _evaluate(node: ast.AST, row: dict[str, Any]) -> Any:
     if isinstance(node, ast.Name):
         if node.id not in row:
             raise KeyError(node.id)
-        return row[node.id]
+        value = row[node.id]
+        if isinstance(value, (int, float)) and not math.isfinite(value):
+            raise ValueError("Constraint numeric inputs must be finite")
+        return value
     if isinstance(node, ast.BoolOp):
-        values = [_evaluate(value, row) for value in node.values]
+        values = (bool(_evaluate(value, row)) for value in node.values)
         return all(values) if isinstance(node.op, ast.And) else any(values)
     if isinstance(node, ast.UnaryOp):
         value = _evaluate(node.operand, row)
@@ -87,18 +127,25 @@ def _evaluate(node: ast.AST, row: dict[str, Any]) -> Any:
         return -value
     if isinstance(node, ast.BinOp):
         left, right = _evaluate(node.left, row), _evaluate(node.right, row)
-        if isinstance(node.op, ast.Add):
-            return left + right
-        if isinstance(node.op, ast.Sub):
-            return left - right
-        if isinstance(node.op, ast.Mult):
-            return left * right
-        if isinstance(node.op, ast.Div):
-            return left / right
-        if isinstance(node.op, ast.Pow):
-            return left**right
-        if isinstance(node.op, ast.Mod):
-            return left % right
+        if any(
+            isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v)
+            for v in (left, right)
+        ):
+            raise ValueError("Constraint arithmetic requires finite numbers")
+        if isinstance(node.op, ast.Pow) and abs(right) > 32:
+            raise ValueError("Constraint exponent magnitude must be <= 32")
+        functions = {
+            ast.Add: operator.add,
+            ast.Sub: operator.sub,
+            ast.Mult: operator.mul,
+            ast.Div: operator.truediv,
+            ast.Pow: operator.pow,
+            ast.Mod: operator.mod,
+        }
+        result = functions[type(node.op)](left, right)
+        if isinstance(result, complex) or not math.isfinite(result):
+            raise ValueError("Constraint arithmetic must produce finite real numbers")
+        return result
     if isinstance(node, ast.Compare):
         left = _evaluate(node.left, row)
         for op, comparator in zip(node.ops, node.comparators):
@@ -140,9 +187,7 @@ def declarative_constraint(
     if available_fields is not None:
         unknown = names - available_fields
         if unknown:
-            raise ValueError(
-                f"Constraint {name!r} references unknown fields: {sorted(unknown)}"
-            )
+            raise ValueError(f"Constraint {name!r} references unknown fields: {sorted(unknown)}")
     tree = _parse(expression)
 
     def predicate(row: dict[str, Any]) -> bool:
@@ -185,9 +230,7 @@ class ConstraintEngine:
                             "severity": constraint.severity,
                         }
                     )
-        return ConstraintReport(
-            not any(v["severity"] == "error" for v in violations), violations
-        )
+        return ConstraintReport(not any(v["severity"] == "error" for v in violations), violations)
 
 
 def range_constraint(
@@ -198,14 +241,10 @@ def range_constraint(
 ) -> Constraint:
     def predicate(row: dict[str, Any]) -> bool:
         value = row[field]
-        return (minimum is None or value >= minimum) and (
-            maximum is None or value <= maximum
-        )
+        return (minimum is None or value >= minimum) and (maximum is None or value <= maximum)
 
     return Constraint(name, predicate)
 
 
-def relationship_constraint(
-    name: str, expression: Callable[[dict[str, Any]], bool]
-) -> Constraint:
+def relationship_constraint(name: str, expression: Callable[[dict[str, Any]], bool]) -> Constraint:
     return Constraint(name, expression)

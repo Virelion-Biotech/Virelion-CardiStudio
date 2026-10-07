@@ -1,4 +1,5 @@
 """CardiStudio: reproducible cardiac experimental-population design and simulation."""
+
 from importlib.metadata import PackageNotFoundError, version
 
 from .models import ChallengeSpec, FeatureSpec, PopulationSpec, CURRENT_CHALLENGE_VERSION
@@ -7,6 +8,9 @@ from .validation import ValidationReport, validate_challenge, validate_populatio
 from .analysis import summarize_population, balance_report
 from .io import (
     export_cardi_bridge,
+    cardi_bridge_envelope,
+    export_cardi_bridge_envelope,
+    loads_challenge,
     load_challenge,
     load_population,
     save_challenge,
@@ -36,14 +40,43 @@ except PackageNotFoundError:
     __version__ = "0+local"
 
 __all__ = [
-    "ChallengeSpec", "FeatureSpec", "PopulationSpec", "CURRENT_CHALLENGE_VERSION",
-    "PopulationBuilder", "Population", "GENERATOR_VERSION", "ValidationReport",
-    "validate_challenge", "validate_population", "summarize_population", "balance_report",
-    "load_challenge", "save_challenge", "save_population", "load_population",
-    "export_cardi_bridge", "Factor", "ExperimentalDesign", "full_factorial",
-    "gaussian_copula", "correlated_normals", "validate_correlation", "TrajectorySpec",
-    "exponential_recovery", "logistic_transition", "subject_exponential_long",
-    "Constraint", "ConstraintEngine", "ConstraintReport", "range_constraint",
-    "relationship_constraint", "declarative_constraint", "cohens_d",
-    "approximate_two_sample_n", "__version__",
+    "ChallengeSpec",
+    "FeatureSpec",
+    "PopulationSpec",
+    "CURRENT_CHALLENGE_VERSION",
+    "PopulationBuilder",
+    "Population",
+    "GENERATOR_VERSION",
+    "ValidationReport",
+    "validate_challenge",
+    "validate_population",
+    "summarize_population",
+    "balance_report",
+    "load_challenge",
+    "save_challenge",
+    "save_population",
+    "load_population",
+    "export_cardi_bridge",
+    "cardi_bridge_envelope",
+    "export_cardi_bridge_envelope",
+    "loads_challenge",
+    "Factor",
+    "ExperimentalDesign",
+    "full_factorial",
+    "gaussian_copula",
+    "correlated_normals",
+    "validate_correlation",
+    "TrajectorySpec",
+    "exponential_recovery",
+    "logistic_transition",
+    "subject_exponential_long",
+    "Constraint",
+    "ConstraintEngine",
+    "ConstraintReport",
+    "range_constraint",
+    "relationship_constraint",
+    "declarative_constraint",
+    "cohens_d",
+    "approximate_two_sample_n",
+    "__version__",
 ]

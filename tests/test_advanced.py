@@ -56,9 +56,7 @@ def test_correlation_validation_errors():
 
 
 def test_trajectory():
-    spec = TrajectorySpec(
-        (0, 1, 7), 1, 0, 0.5, subject_intercept_sd=0.1, subject_rate_sd=0.05
-    )
+    spec = TrajectorySpec((0, 1, 7), 1, 0, 0.5, subject_intercept_sd=0.1, subject_rate_sd=0.05)
     values = exponential_recovery(spec, 10)
     assert values.shape == (10, 3)
     assert np.isfinite(values).all()

@@ -4,6 +4,9 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Literal
 import hashlib
 import json
+from copy import deepcopy
+
+from .serialization import canonical_json
 
 Distribution = Literal["normal", "uniform", "lognormal", "bernoulli", "categorical", "constant"]
 CURRENT_CHALLENGE_VERSION = "1.1"
@@ -59,10 +62,10 @@ class ChallengeSpec:
     def from_dict(cls, data: dict[str, Any]) -> "ChallengeSpec":
         pop = PopulationSpec(**data.get("population", {}))
         features = [FeatureSpec(**x) for x in data.get("features", [])]
-        return cls(**{**data, "population": pop, "features": features})
+        return deepcopy(cls(**{**data, "population": pop, "features": features}))
 
     def canonical_json(self) -> str:
-        return json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
+        return canonical_json(self.to_dict())
 
     def fingerprint(self) -> str:
         return hashlib.sha256(self.canonical_json().encode()).hexdigest()
@@ -70,15 +73,13 @@ class ChallengeSpec:
 
 def migrate_challenge_dict(data: dict[str, Any]) -> dict[str, Any]:
     """Migrate supported 1.x challenge documents to the current model."""
-    version = str(data.get("version", "1.0"))
-    major = version.split(".", 1)[0]
-    current_major = CURRENT_CHALLENGE_VERSION.split(".", 1)[0]
-    if major != current_major:
+    version = data.get("version", "1.0")
+    if version not in ("1.0", CURRENT_CHALLENGE_VERSION):
         raise ValueError(
-            f"Unsupported challenge major version {version}; expected {current_major}.x"
+            f"Unsupported challenge version {version}; supported: 1.0, {CURRENT_CHALLENGE_VERSION}"
         )
 
-    migrated = json.loads(json.dumps(data))
+    migrated = json.loads(canonical_json(data))
     for feature in migrated.get("features", []):
         feature.setdefault("effects", {})
     pop = migrated.setdefault("population", {})

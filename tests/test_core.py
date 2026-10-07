@@ -35,9 +35,7 @@ def test_effect_has_signal():
     sham = np.array(
         [row["ejection_fraction"] for row in population.rows if row["condition"] == "sham"]
     )
-    mi = np.array(
-        [row["ejection_fraction"] for row in population.rows if row["condition"] == "mi"]
-    )
+    mi = np.array([row["ejection_fraction"] for row in population.rows if row["condition"] == "mi"])
     assert mi.mean() < sham.mean() - 0.15
     fibrosis_sham = np.array(
         [row["fibrosis_fraction"] for row in population.rows if row["condition"] == "sham"]
@@ -54,17 +52,18 @@ def test_copula_and_icc_structure():
     fib = np.array([row["fibrosis_fraction"] for row in population.rows])
     assert np.corrcoef(ef, fib)[0, 1] < -0.4
 
-    by_subject: dict[str, list[float]] = {}
-    for row in population.rows:
-        by_subject.setdefault(row["subject_id"], []).append(row["ejection_fraction"])
-    subject_means = np.array([np.mean(values) for values in by_subject.values()])
-    between = np.var(subject_means, ddof=1)
-    within = np.mean(
-        [np.var(values, ddof=1) for values in by_subject.values() if len(values) > 1]
-    )
-    m = len(next(iter(by_subject.values())))
-    empirical_icc = between / (between + within / m)
-    assert empirical_icc > 0.15
+    # Estimate subject ICC within each group; treatment shifts confound pooled ICC.
+    for group in ("sham", "mi"):
+        by_subject: dict[str, list[float]] = {}
+        for row in population.rows:
+            if row["condition"] == group:
+                by_subject.setdefault(row["subject_id"], []).append(row["ejection_fraction"])
+        values = np.asarray(list(by_subject.values()))
+        m = values.shape[1]
+        ms_between = m * np.var(values.mean(axis=1), ddof=1)
+        ms_within = np.mean(np.var(values, axis=1, ddof=1))
+        empirical_icc = (ms_between - ms_within) / (ms_between + (m - 1) * ms_within)
+        assert 0 < empirical_icc < 0.8
 
 
 def test_no_boundary_spike_from_truncation():
@@ -92,9 +91,8 @@ def test_no_boundary_spike_from_truncation():
 def test_ground_truth_recorded():
     population = PopulationBuilder(cardiac_mi_vs_sham(1000, 2)).build()
     ground_truth = population.provenance["ground_truth"]
-    assert (
-        ground_truth["feature_effects"]["ejection_fraction"]["mi"]["shift"]
-        == pytest.approx(-0.22)
+    assert ground_truth["feature_effects"]["ejection_fraction"]["mi"]["shift"] == pytest.approx(
+        -0.22
     )
     assert "mi_vs_sham" in ground_truth["comparisons"]
     assert ground_truth["copula"]["target_correlation"][2][3] == pytest.approx(-0.55)
@@ -157,9 +155,7 @@ def test_validation_error_paths():
     invalid_category = ChallengeSpec(
         name="bad-category",
         population=PopulationSpec(n=4, groups={"a": 2, "b": 2}),
-        features=[
-            FeatureSpec("cat", "categorical", "categorical", {"categories": []})
-        ],
+        features=[FeatureSpec("cat", "categorical", "categorical", {"categories": []})],
     )
     assert not validate_challenge(invalid_category).valid
 

@@ -4,21 +4,69 @@ on:
     branches: [main, "audit/**"]
   pull_request:
     branches: [main]
+permissions:
+  contents: read
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        os: [ubuntu-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        include:
+          - os: windows-latest
+            python-version: "3.12"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-      - run: python -m pip install -e '.[dev]'
-      - run: ruff check .
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -e '.[dev,app]'
+      - run: python -m ruff check .
       - run: python -m mypy src
-      - run: pytest
-      - run: python -m compileall src
+      - run: python -m pytest
+      - run: python -m compileall src app
+      - run: python validation/run_cpu_validation.py --output validation/ci-results.json
+  package-and-bridge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install --upgrade pip build
+      - run: python -m build
+      - run: python -m venv /tmp/cardistudio-wheel
+      - run: /tmp/cardistudio-wheel/bin/python -m pip install --upgrade pip
+      - run: /tmp/cardistudio-wheel/bin/python -m pip install dist/*.whl pytest pip-audit
+      - name: Audit core and app dependencies
+        run: |
+          /tmp/cardistudio-wheel/bin/python -m pip install 'virelion-cardistudio[app]'
+          /tmp/cardistudio-wheel/bin/python -m pip_audit
+      - name: Installed wheel from outside the checkout
+        working-directory: /tmp
+        run: |
+          /tmp/cardistudio-wheel/bin/python -m cardistudio.cli demo --n 40 --output /tmp/studio-smoke
+          /tmp/cardistudio-wheel/bin/python -c "from cardistudio.io import load_challenge,load_population; from cardistudio.validation import validate_population; s=load_challenge('/tmp/studio-smoke/challenge.json'); validate_population(load_population('/tmp/studio-smoke/population.jsonl'),s).raise_if_invalid()"
+      - name: Install audited CardiBridge contract revision
+        run: /tmp/cardistudio-wheel/bin/python -m pip install 'git+https://github.com/Virelion-Biotech/Virelion-CardiBridge.git@fc990ace415c97fb301b2386066862b3dfe8ae98'
+      - name: Verify actual CardiBridge contracts
+        run: /tmp/cardistudio-wheel/bin/python -m pytest tests/test_bridge_integration.py -o addopts='' -o pythonpath=''
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cardistudio-distributions
+          path: dist/*
+  minimum-dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: python -m pip install -e '.[dev]' 'numpy==1.26.0' 'scipy==1.11.0' 'jsonschema==4.20.0'
+      - run: python -m pytest
+      - run: python validation/run_cpu_validation.py --output validation/minimum-results.json
