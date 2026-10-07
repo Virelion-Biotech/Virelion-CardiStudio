@@ -301,6 +301,15 @@ def validate_population(rows: list[dict], spec: ChallengeSpec) -> ValidationRepo
                 error(f"Missing feature: {f.name}")
                 continue
             value = row[f.name]
+            if f.distribution == "constant":
+                expected = f.params["value"]
+                if f.dtype != "categorical":
+                    effect = f.effects.get(str(row.get(p.group_field, "")), {})
+                    expected = expected * effect.get("scale", 1.0) + effect.get("shift", 0.0)
+                if (
+                    f.dtype == "categorical" and canonical_json(value) != canonical_json(expected)
+                ) or (f.dtype != "categorical" and value != expected):
+                    error(f"{f.name}: constant value does not match the specification")
             if f.dtype != "categorical":
                 if not _number(value):
                     error(f"{f.name}: expected a finite numeric value")

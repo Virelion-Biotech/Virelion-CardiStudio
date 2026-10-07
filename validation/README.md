@@ -4,7 +4,7 @@
 
 This audit validates computational behavior and selected statistical properties on ordinary CPU hardware. It does not establish empirical validity of cardiac distributions, treatment effects, causal relationships, or clinical/preclinical outcomes. The MI-vs-sham preset is a synthetic pipeline benchmark with assumed parameters.
 
-The original 24 tests passed (86.25% statement coverage). An initial set of 22 independent regression cases produced 20 failures. The repaired implementation passes 91 regression, property, UI and interoperability tests (88.66% statement coverage). Results and exact commands are recorded below; CI repeats the checks on Linux Python 3.10–3.14 and Windows Python 3.12, with a separate minimum-dependency and installed-wheel job.
+The original 24 tests passed (86.25% statement coverage). An initial set of 22 independent regression cases produced 20 failures. The repaired implementation passes 94 regression, property, UI and interoperability tests (88.72% statement coverage). Results and exact commands are recorded below; CI repeats the checks on Linux Python 3.10–3.14 and Windows Python 3.12, with a separate minimum-dependency and installed-wheel job.
 
 ## Confirmed defects repaired
 
@@ -14,7 +14,7 @@ The original 24 tests passed (86.25% statement coverage). An initial set of 22 i
 - Reusing a builder advanced structural RNG state; source-spec mutation also changed the builder. Generation now restarts its seed and detaches the input specification.
 - Boolean constraint evaluation did not short-circuit implication. Parsing, arithmetic and finite-value checks now reject unsupported or undefined expressions.
 - Loaded population files were not checked against their recorded digest. Verified loading requires the provenance sidecar, checks SHA-256 and row counts, and rejects nonfinite or duplicate-key JSON.
-- Constant values and mixed categorical labels could produce invalid or ambiguous outputs. Constants are checked against bounds/effects; category types are preserved and count keys use canonical JSON scalar encodings.
+- Constant values and mixed categorical labels could produce invalid or ambiguous outputs. Constants are checked against bounds/effects and their specified values on population validation; category types are preserved and count keys use canonical JSON scalar encodings.
 - Trajectory parameters and power inputs accepted nonfinite values. Recovery rates with nonzero variability now follow a positive truncated normal instead of accumulating clipped rates at a floor. Logistic and recovery interpolation avoid avoidable overflow.
 - The old CardiBridge export was a CardiStudio study bundle. The new `cardi_bridge_envelope`/`export_cardi_bridge_envelope` APIs produce a canonical `agent.challenge` envelope verified against actual CardiBridge contracts at revision `fc990ace415c97fb301b2386066862b3dfe8ae98`.
 - The app conflated observations and subjects, accepted uploads through a JSON reserialization step that erased duplicate keys, omitted provenance downloads and displayed changed settings alongside an old cohort without notice. These paths are corrected; generic numeric feature plotting and the bridge envelope download are added.
@@ -44,6 +44,8 @@ Primary mathematical references:
 - [SciPy truncated normal distribution](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.truncnorm.html): standardized truncation limits and conditional inverse CDF.
 - [SciPy lognormal distribution](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.lognorm.html): log-space parameterization.
 - [Statsmodels normal-approximation power](https://www.statsmodels.org/stable/generated/statsmodels.stats.power.NormalIndPower.html): independent two-sample normal planning scope.
+
+A fresh installed-wheel environment with the app dependencies was audited with `pip-audit`; no known vulnerabilities were reported in the resolved third-party dependencies.
 
 ## Interpretation and migration
 

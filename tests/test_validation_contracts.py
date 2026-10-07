@@ -176,3 +176,18 @@ def test_stable_trajectories_and_large_rate_variability():
     assert not np.any(values[:, -1] == values[:, 0])
     with pytest.raises(ValueError):
         exponential_recovery(TrajectorySpec((0, 0), 1, 0), 2)
+
+
+@pytest.mark.parametrize(
+    "feature,value",
+    [
+        (FeatureSpec("x", "continuous", "constant", {"value": 3}), 4),
+        (FeatureSpec("x", "categorical", "constant", {"value": "fixed"}), "changed"),
+        (FeatureSpec("x", "categorical", "constant", {"value": 1}), True),
+    ],
+)
+def test_constant_population_cannot_change_its_specified_value(feature, value):
+    challenge = spec(feature)
+    population = PopulationBuilder(challenge).build()
+    population.rows[0]["x"] = value
+    assert not validate_population(population.rows, challenge).valid

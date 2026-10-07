@@ -552,4 +552,5 @@ class PopulationBuilder:
                 for group in p.groups
             },
         }
+        canonical_json(provenance)
         return Population(rows, provenance)
