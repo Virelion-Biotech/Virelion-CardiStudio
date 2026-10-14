@@ -2,6 +2,21 @@
 
 CardiStudio is a reproducible Python toolkit for experimental design, synthetic cardiac population generation, constraint-aware sampling, power planning, and computational study specifications.
 
+
+<!-- VALIDATION_PRODUCT_STATUS:BEGIN -->
+## Validation and product completion status
+
+**Reviewed 2026-10-14; implementation base `d02739291d5e`.** **Status: Synthetic/statistical design checks; empirical planning calibration incomplete.** This is an evidence-backed scope assessment, not a percentage-complete estimate or a declaration that the product is finished.
+
+| Area | Current evidence / remaining gate |
+|---|---|
+| Software / operational checks | Automated test sources and CI definitions are present; this documentation audit does not report a new algorithm/data-validation run. |
+| Scientific or domain evidence | The CPU audit covers hierarchy, truncation, correlation, reproducibility and approximate ICC-aware power planning. Constraint satisfaction and synthetic population fit do not establish biological realism. |
+| Remaining for the declared product scope | Calibrate marginal/dependence/hierarchy parameters on independent measured cohorts; compare power/coverage with appropriate clustered and longitudinal reference designs; qualify constraint feasibility and study templates with domain review; test intended-size design/HeartTwin workflows. |
+
+Evidence and limits: [repository report](validation/README.md). The [organization status index](https://github.com/Virelion-Biotech/Virelion-HeartTwin/blob/main/docs/STACK_VALIDATION_STATUS.md) separates software, numerical, data-readiness and empirical qualification. Code/schema execution or a completed download is not a substitute for endpoint-specific validation.
+<!-- VALIDATION_PRODUCT_STATUS:END -->
+
 ## What it does
 
 - Generates synthetic cohorts with explicit group effects and a recorded ground truth.
