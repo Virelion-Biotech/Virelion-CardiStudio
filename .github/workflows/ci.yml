@@ -56,7 +56,7 @@ jobs:
         run: /tmp/cardistudio-wheel/bin/python -m pip install 'git+https://github.com/Virelion-Biotech/Virelion-CardiBridge.git@fc990ace415c97fb301b2386066862b3dfe8ae98'
       - name: Verify actual CardiBridge contracts
         run: /tmp/cardistudio-wheel/bin/python -m pytest tests/test_bridge_integration.py -o addopts='' -o pythonpath=''
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: cardistudio-distributions
           path: dist/*
